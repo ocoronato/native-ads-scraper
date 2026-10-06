@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Native Ads — Visualizador</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --border: #e2e5ea;
+    --text: #12141a;
+    --muted: #666d7a;
+    --accent: #3b5bdb;
+    --accent-soft: #eef1fd;
+    --warn: #b8860b;
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 12px rgba(0,0,0,.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14161a;
+      --panel: #1c1f25;
+      --border: #2c313a;
+      --text: #e8eaee;
+      --muted: #939aa6;
+      --accent: #7a91f0;
+      --accent-soft: #232941;
+      --warn: #d6a72c;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 12px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --panel: #1c1f25; --border: #2c313a; --text: #e8eaee;
+    --muted: #939aa6; --accent: #7a91f0; --accent-soft: #232941; --warn: #d6a72c;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 12px rgba(0,0,0,.25);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 24px 16px 64px; }
+
+  header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  h1 { font-size: 20px; margin: 0; letter-spacing: -.01em; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .theme-btn {
+    margin-left: auto; background: var(--panel); color: var(--muted);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 6px 12px; cursor: pointer; font-size: 13px;
+  }
+  .theme-btn:hover { color: var(--text); }
+
+  /* ---- zona de carregamento ---- */
+  #drop {
+    border: 2px dashed var(--border); border-radius: var(--radius);
+    background: var(--panel); padding: 40px 24px; text-align: center;
+    transition: border-color .15s, background .15s; cursor: pointer;
+  }
+  #drop.hot { border-color: var(--accent); background: var(--accent-soft); }
+  #drop h2 { margin: 0 0 6px; font-size: 16px; }
+  #drop p { margin: 0; color: var(--muted); font-size: 13px; }
+  #drop code {
+    background: var(--bg); border: 1px solid var(--border);
+    padding: 1px 6px; border-radius: 5px; font-size: 12px;
+  }
+  #file { display: none; }
+
+  /* ---- filtros ---- */
+  .filters {
+    display: grid; gap: 10px; margin-bottom: 16px;
+    grid-template-columns: minmax(220px, 2fr) repeat(auto-fit, minmax(130px, 1fr));
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow);
+  }
+  .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .field label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  input, select {
+    font: inherit; font-size: 14px; color: var(--text); background: var(--bg);
+    border: 1px solid var(--border); border-radius: 7px; padding: 7px 9px; min-width: 0;
+  }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+  .bar {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    margin-bottom: 14px; font-size: 13px; color: var(--muted);
+  }
+  .bar strong { color: var(--text); }
+  .chip {
+    background: var(--accent-soft); color: var(--accent); border-radius: 20px;
+    padding: 2px 10px; font-size: 12px; font-weight: 600;
+  }
+  .chip.toggle {
+    border: 1px solid transparent; cursor: pointer; font: inherit;
+    font-size: 12px; font-weight: 600; transition: background .12s, color .12s;
+  }
+  .chip.toggle:hover { border-color: var(--accent); }
+  .chip.toggle[aria-pressed="true"] {
+    background: var(--accent); color: #fff;
+  }
+  .linkbtn { background: none; border: 0; color: var(--accent); cursor: pointer; font: inherit; font-size: 13px; padding: 0; }
+  .linkbtn:hover { text-decoration: underline; }
+
+  /* ---- grade de criativos ---- */
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+    display: flex; flex-direction: column;
+  }
+  .thumb {
+    width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--bg);
+    display: block; border-bottom: 1px solid var(--border); cursor: zoom-in;
+  }
+  .thumb.missing { display: grid; place-items: center; color: var(--muted); font-size: 12px; }
+  .body { padding: 12px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .headline { font-weight: 600; font-size: 14px; line-height: 1.35; margin: 0; }
+  .meta { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tag {
+    font-size: 11px; padding: 2px 7px; border-radius: 5px;
+    background: var(--bg); border: 1px solid var(--border); color: var(--muted);
+  }
+  .tag.adv { color: var(--text); font-weight: 600; }
+  .tag.nicho { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+  .streak {
+    position: absolute; top: 8px; left: 8px; z-index: 1;
+    background: rgba(12,14,20,.82); color: #fff; backdrop-filter: blur(4px);
+    border-radius: 20px; padding: 3px 9px; font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .streak.hot { background: rgba(200,60,20,.9); }
+  .streak.cold { background: rgba(70,75,85,.85); font-weight: 600; }
+  .card { position: relative; }
+  .foot {
+    margin-top: auto; padding-top: 8px; border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted);
+  }
+  .domain { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .foot button { background: none; border: 0; color: var(--accent); cursor: pointer; font: inherit; padding: 2px 4px; border-radius: 4px; }
+  .foot button:hover { background: var(--accent-soft); }
+
+  .empty { text-align: center; color: var(--muted); padding: 60px 20px; }
+  .note {
+    font-size: 12px; color: var(--warn); background: var(--panel);
+    border: 1px solid var(--border); border-left: 3px solid var(--warn);
+    border-radius: 7px; padding: 9px 12px; margin-bottom: 14px;
+  }
+
+  /* ---- lightbox ---- */
+  dialog {
+    border: 0; border-radius: var(--radius); padding: 0; background: var(--panel);
+    color: var(--text); max-width: min(92vw, 900px); box-shadow: 0 20px 60px rgba(0,0,0,.4);
+  }
+  dialog::backdrop { background: rgba(0,0,0,.65); }
+  dialog img { width: 100%; max-height: 62vh; object-fit: contain; display: block; background: var(--bg); }
+  .dlg-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .dlg-body h3 { margin: 0; font-size: 16px; line-height: 1.35; }
+  .kv { display: grid; grid-template-columns: 90px 1fr; gap: 4px 12px; font-size: 13px; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; word-break: break-all; }
+  .dlg-close {
+    align-self: flex-end; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); border-radius: 7px; padding: 6px 14px; cursor: pointer; font: inherit;
+  }
+  .params h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+  .params h4 span { text-transform: none; letter-spacing: 0; }
+  .params { max-height: 30vh; overflow: auto; border: 1px solid var(--border); border-radius: 7px; padding: 10px; }
+  .params table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .params th { text-align: left; color: var(--muted); font-weight: 600; padding: 3px 10px 3px 0;
+    white-space: nowrap; vertical-align: top; }
+  .params td { word-break: break-all; padding: 3px 0; font-family: ui-monospace, "Cascadia Code", monospace; }
+  @media (max-width: 560px) { .kv { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Native Ads</h1>
+    <span class="sub" id="source">nenhum arquivo carregado</span>
+    <button class="theme-btn" id="theme">tema</button>
+  </header>
+
+  <div id="drop" role="button" tabindex="0">
+    <h2>Arraste o <code>creatives.json</code> aqui</h2>
+    <p>ou clique para escolher. Nada sai da sua máquina — o arquivo é lido no próprio navegador.</p>
+  </div>
+  <input type="file" id="file" accept=".json,application/json">
+
+  <div id="app" hidden>
+    <div class="filters">
+      <div class="field">
+        <label for="q">Buscar</label>
+        <input id="q" type="search" placeholder="headline, anunciante, domínio…" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="de">De</label>
+        <input id="de" type="date">
+      </div>
+      <div class="field">
+        <label for="ate">Até</label>
+        <input id="ate" type="date">
+      </div>
+      <div class="field">
+        <label for="pub">Publisher</label>
+        <select id="pub"><option value="">todos</option></select>
+      </div>
+      <div class="field">
+        <label for="net">Rede</label>
+        <select id="net"><option value="">todas</option></select>
+      </div>
+      <div class="field">
+        <label for="nic">Nicho</label>
+        <select id="nic"><option value="">todos</option></select>
+      </div>
+      <div class="field">
+        <label for="vivo">Situação</label>
+        <select id="vivo">
+          <option value="">todos</option>
+          <option value="sim">ainda no ar</option>
+          <option value="nao">já saiu</option>
+          <option value="2">2+ dias no ar</option>
+          <option value="3">3+ dias no ar</option>
+          <option value="5">5+ dias no ar</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="dev">Device</label>
+        <select id="dev"><option value="">todos</option></select>
+      </div>
+      <div class="field">
+        <label for="ord">Ordem</label>
+        <select id="ord">
+          <option value="recente">mais recentes</option>
+          <option value="antigo">mais antigos</option>
+          <option value="anunciante">anunciante A→Z</option>
+          <option value="publisher">publisher A→Z</option>
+          <option value="maior">maior imagem</option>
+          <option value="streak">mais dias no ar</option>
+          <option value="vezes">mais encontrado</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="note">
+      Os links são de redirect da rede. Abrir um registra clique real no anúncio e
+      gasta a verba do anunciante — por isso o card não abre sozinho: use “copiar”.
+    </div>
+
+    <div class="bar">
+      <span><strong id="shown">0</strong> de <strong id="total">0</strong> criativos</span>
+      <span class="chip" id="advs">0 anunciantes</span>
+      <span class="chip" id="pubs">0 publishers</span>
+      <button class="chip toggle" id="vivos" aria-pressed="false"
+              title="Mostrar só os criativos que voltaram em outro dia">0 com 2+ dias</button>
+      <button class="linkbtn" id="clear">limpar filtros</button>
+      <button class="linkbtn" id="csv">baixar filtrados em CSV</button>
+    </div>
+
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" hidden>Nada bate com esses filtros.</div>
+  </div>
+</div>
+
+<dialog id="dlg">
+  <img id="dlg-img" alt="">
+  <div class="dlg-body">
+    <h3 id="dlg-head"></h3>
+    <dl class="kv" id="dlg-kv"></dl>
+    <div class="params" id="dlg-params" hidden></div>
+    <button class="dlg-close" id="dlg-close">fechar</button>
+  </div>
+</dialog>
+
+<script>
+(() => {
+  "use strict";
+
+  let rows = [];
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  /* ---------- tema ---------- */
+  try {
+    const saved = localStorage.getItem("theme");
+    if (saved) document.documentElement.dataset.theme = saved;
+  } catch (e) { /* modo privado */ }
+  $("theme").onclick = () => {
+    const now = document.documentElement.dataset.theme
+      || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    const next = now === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem("theme", next); } catch (e) { /* ok */ }
+  };
+
+  /* ---------- carregamento do arquivo ---------- */
+  const drop = $("drop"), file = $("file");
+  drop.onclick = () => file.click();
+  drop.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); file.click(); } };
+  file.onchange = () => file.files[0] && readFile(file.files[0]);
+
+  ["dragenter", "dragover"].forEach((ev) =>
+    drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("hot"); }));
+  ["dragleave", "drop"].forEach((ev) =>
+    drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("hot"); }));
+  drop.addEventListener("drop", (e) => {
+    const f = e.dataTransfer?.files?.[0];
+    if (f) readFile(f);
+  });
+
+  function readFile(f) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        load(JSON.parse(reader.result), f.name);
+      } catch (err) {
+        alert("Não consegui ler esse JSON: " + err.message);
+      }
+    };
+    reader.readAsText(f, "utf-8");
+  }
+
+  // Servido por http (python -m http.server) ele carrega sozinho.
+  if (location.protocol.startsWith("http")) {
+    fetch("data/creatives.json")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((d) => load(d, "data/creatives.json (automático)"))
+      .catch(() => { /* segue no modo arrastar */ });
+  }
+
+  function load(data, name) {
+    if (!Array.isArray(data)) return alert("Esperava uma lista de criativos.");
+    rows = data.filter((r) => r && typeof r === "object");
+    $("source").textContent = `${name} — ${rows.length} criativos`;
+    drop.hidden = true;
+    $("app").hidden = false;
+    fillSelect("pub", "publisher");
+    fillSelect("net", "network");
+    fillSelect("dev", "device");
+    fillSelect("nic", "niche");
+    $("total").textContent = rows.length;
+    render();
+  }
+
+  function fillSelect(id, key) {
+    const select = $(id);
+    const values = [...new Set(rows.map((r) => r[key]).filter(Boolean))].sort();
+    select.length = 1;
+    for (const v of values) select.add(new Option(v, v));
+  }
+
+  /* ---------- filtros ---------- */
+  const controls = ["q", "de", "ate", "pub", "net", "dev", "nic", "vivo", "ord"];
+  controls.forEach((id) => $(id).addEventListener("input", render));
+
+  // Atalho de um clique pro filtro mais usado no dia a dia: quem voltou.
+  // Continua sendo o mesmo filtro do seletor Situação, so que a um toque.
+  $("vivos").onclick = () => {
+    const ligado = $("vivo").value === "2";
+    $("vivo").value = ligado ? "" : "2";
+    render();
+  };
+
+  $("clear").onclick = () => { controls.forEach((id) => ($(id).value = id === "ord" ? "recente" : "")); render(); };
+
+  const dayOf = (iso) => String(iso || "").slice(0, 10);
+
+  function current() {
+    const q = $("q").value.trim().toLowerCase();
+    const de = $("de").value, ate = $("ate").value;
+    const pub = $("pub").value, net = $("net").value, dev = $("dev").value;
+    const vivo = $("vivo").value;
+    const nic = $("nic").value;
+
+    let out = rows.filter((r) => {
+      if (pub && r.publisher !== pub) return false;
+      if (net && r.network !== net) return false;
+      if (dev && r.device !== dev) return false;
+      if (nic && r.niche !== nic) return false;
+      if (vivo === "sim" && r.active === false) return false;
+      if (vivo === "nao" && r.active !== false) return false;
+      if (/^\d+$/.test(vivo) && (r.days_seen || 1) < Number(vivo)) return false;
+      const day = dayOf(r.captured_at);
+      if (de && day < de) return false;
+      if (ate && day > ate) return false;
+      if (!q) return true;
+      return [r.headline, r.advertiser, r.landing_domain, r.publisher, r.network,
+              r.click_url, r.click_params, r.utm_content, r.campaign_id, r.niche]
+        .some((v) => String(v || "").toLowerCase().includes(q));
+    });
+
+    const by = $("ord").value;
+    const cmp = {
+      recente: (a, b) => String(b.captured_at).localeCompare(String(a.captured_at)),
+      antigo: (a, b) => String(a.captured_at).localeCompare(String(b.captured_at)),
+      anunciante: (a, b) => String(a.advertiser || "~").localeCompare(String(b.advertiser || "~"), "pt"),
+      publisher: (a, b) => String(a.publisher).localeCompare(String(b.publisher), "pt"),
+      vezes: (a, b) => (b.times_seen || 0) - (a.times_seen || 0),
+      streak: (a, b) => (b.days_seen || 0) - (a.days_seen || 0)
+                     || (b.streak || 0) - (a.streak || 0),
+      maior: (a, b) => (b.image_width || 0) * (b.image_height || 0) - (a.image_width || 0) * (a.image_height || 0),
+    }[by];
+    return out.sort(cmp);
+  }
+
+  /* ---------- render ---------- */
+  function render() {
+    const list = current();
+    $("shown").textContent = list.length;
+    $("advs").textContent = new Set(list.map((r) => r.advertiser || r.landing_domain).filter(Boolean)).size + " anunciantes";
+    $("pubs").textContent = new Set(list.map((r) => r.publisher)).size + " publishers";
+    const doisMais = rows.filter((r) => (r.days_seen || 1) >= 2).length;
+    const ligado = $("vivo").value === "2";
+    $("vivos").textContent = ligado ? `mostrando ${doisMais} com 2+ dias` : `${doisMais} com 2+ dias`;
+    $("vivos").setAttribute("aria-pressed", String(ligado));
+    $("empty").hidden = list.length > 0;
+
+    const grid = $("grid");
+    grid.textContent = "";
+    const frag = document.createDocumentFragment();
+
+    list.forEach((r, i) => {
+      const card = document.createElement("article");
+      card.className = "card";
+      card.innerHTML = `
+        ${streakBadge(r)}
+        <img class="thumb" loading="lazy" alt="" src="${esc(localSrc(r))}" data-remote="${esc(r.image_fallback || r.image_url || "")}">
+        <div class="body">
+          <p class="headline">${esc(r.headline)}</p>
+          <div class="meta">
+            ${r.advertiser ? `<span class="tag adv">${esc(r.advertiser)}</span>` : ""}
+            ${r.niche && r.niche !== "outros" ? `<span class="tag nicho">${esc(r.niche)}</span>` : ""}
+            <span class="tag">${esc(r.publisher)}</span>
+            <span class="tag">${esc(r.network)}</span>
+            <span class="tag">${esc(r.device)}</span>
+            <span class="tag">${esc(dayOf(r.captured_at))}</span>
+            ${r.image_width ? `<span class="tag">${r.image_width}×${r.image_height}</span>` : ""}
+            ${(r.times_seen || 1) > 1 ? `<span class="tag">encontrado ${r.times_seen}x</span>` : ""}
+          </div>
+          <div class="foot">
+            <span class="domain" title="${esc(r.click_url)}">${esc(r.landing_domain || "—")}</span>
+            <button data-copy="${esc(r.click_url)}">copiar link</button>
+          </div>
+        </div>`;
+      card.querySelector(".thumb").onclick = () => openDialog(r);
+      frag.appendChild(card);
+    });
+
+    grid.appendChild(frag);
+  }
+
+  // Dias no ar e o numero que interessa: anuncio que volta esta pagando.
+  // Quem saiu do ar fica cinza, pra nao competir com quem ainda roda.
+  function streakBadge(r) {
+    const dias = r.days_seen || 1;
+    const vezes = r.times_seen || 1;
+    // Card sem nada a dizer (1 dia, 1 avistamento, ainda no ar) fica limpo.
+    if (dias < 2 && vezes < 2 && r.active !== false) return "";
+    const classe = r.active === false ? "cold" : (dias >= 5 ? "hot" : "");
+    const base = r.active === false
+      ? `${dias}d · saiu`
+      : `${dias} ${dias === 1 ? "dia" : "dias"} no ar`;
+    const texto = vezes > 1 ? `${base} · ${vezes}x` : base;
+    const detalhe = Object.entries(r.seen_counts || {})
+      .map(([d, n]) => `${d}: ${n}x`).join(" · ") || (r.seen_dates || []).join(", ");
+    return `<span class="streak ${classe}" title="${esc(detalhe)}">${esc(texto)}</span>`;
+  }
+
+  // Primeiro tenta o arquivo em disco; se falhar, cai pra URL original do criativo.
+  function localSrc(r) {
+    return r.image_file ? "data/" + r.image_file : (r.image_url || "");
+  }
+
+  document.addEventListener("error", (e) => {
+    const img = e.target;
+    if (img.tagName !== "IMG" || !img.classList.contains("thumb")) return;
+    const remote = img.dataset.remote;
+    if (remote && img.src !== remote) { img.src = remote; img.dataset.remote = ""; }
+    else { img.replaceWith(Object.assign(document.createElement("div"), {
+      className: "thumb missing", textContent: "sem imagem" })); }
+  }, true);
+
+  document.addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-copy]");
+    if (!btn) return;
+    try {
+      await navigator.clipboard.writeText(btn.dataset.copy);
+      const old = btn.textContent;
+      btn.textContent = "copiado!";
+      setTimeout(() => (btn.textContent = old), 1200);
+    } catch (err) {
+      prompt("Copie o link:", btn.dataset.copy);
+    }
+  });
+
+  /* ---------- detalhe ---------- */
+  const dlg = $("dlg");
+  $("dlg-close").onclick = () => dlg.close();
+  dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+
+  function openDialog(r) {
+    $("dlg-img").src = localSrc(r);
+    $("dlg-img").onerror = () => { $("dlg-img").src = r.image_fallback || r.image_url || ""; };
+    $("dlg-head").textContent = r.headline;
+    $("dlg-kv").innerHTML = [
+      ["Anunciante", r.advertiser || "—"],
+      ["Publisher", `${r.publisher} · ${r.device}`],
+      ["Rede", r.network],
+      ["Capturado", r.captured_at],
+      ["Nicho", r.niche || "—"],
+      ["Encontrado", `${r.times_seen || 1}x no total, em ${r.days_seen || 1} coleta(s)`],
+      ["No ar", `${r.days_seen || 1} dia(s) · streak ${r.streak || 1} · melhor ${r.best_streak || 1}` + (r.active === false ? " · já saiu" : "") + `<br><small>${esc((r.seen_dates||[]).join(", "))}</small>`],
+      ["Imagem", r.image_width ? `${r.image_width}×${r.image_height} px · ${Math.round((r.image_bytes||0)/1024)} KB` : "—"],
+      ["Destino", r.landing_domain || "—"],
+      ["Link", `<a href="${esc(r.click_url)}" target="_blank" rel="noopener noreferrer nofollow">abrir (conta como clique no anúncio)</a>`],
+      ["Visto em", `<a href="${esc(r.source_url)}" target="_blank" rel="noopener noreferrer">${esc(r.source_url)}</a>`],
+    ].map(([k, v]) => `<dt>${esc(k)}</dt><dd>${["Link","Visto em","No ar","Encontrado"].includes(k) ? v : esc(v)}</dd>`).join("");
+    const box = document.getElementById("dlg-params");
+    let params = {};
+    try { params = r.click_params ? JSON.parse(r.click_params) : {}; } catch (e) { params = {}; }
+    const entries = Object.entries(params);
+    if (entries.length) {
+      box.hidden = false;
+      box.innerHTML = `<h4>Parâmetros da URL <span>(${entries.length})</span></h4>` +
+        `<table>${entries.map(([k, v]) =>
+          `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join("")}</table>`;
+    } else {
+      box.hidden = true;
+    }
+    dlg.showModal();
+  }
+
+  /* ---------- exportar ---------- */
+  $("csv").onclick = () => {
+    const list = current();
+    if (!list.length) return;
+    const cols = ["captured_at", "first_seen", "last_seen", "days_seen", "times_seen", "streak",
+                  "best_streak", "span_days", "active", "seen_dates", "publisher", "device", "network", "headline",
+                  "advertiser", "niche", "click_url", "landing_domain", "utm_source", "utm_medium",
+                  "utm_content", "campaign_id", "click_params", "image_url", "image_file",
+                  "image_width", "image_height"];
+    const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const csv = "﻿" + [cols.join(","), ...list.map((r) => cols.map((c) => cell(r[c])).join(","))].join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    Object.assign(document.createElement("a"), { href: url, download: "criativos-filtrados.csv" }).click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+})();
+</script>
+</body>
+</html>

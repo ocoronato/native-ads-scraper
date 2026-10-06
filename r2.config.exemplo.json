@@ -1,0 +1,7 @@
+{
+  "account_id": "o ID da sua conta Cloudflare (aparece na URL do painel)",
+  "access_key_id": "do token de API do R2",
+  "secret_access_key": "do token de API do R2",
+  "bucket": "native-ads",
+  "public_base": "https://pub-XXXXXXXX.r2.dev"
+}

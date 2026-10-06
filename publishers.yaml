@@ -1,0 +1,66 @@
+# ---------------------------------------------------------------------------
+# Publishers de escala — edite livremente.
+#
+#   name     : identificador curto (usado em --only e nas pastas de saida)
+#   devices  : [desktop, mobile] — em quais perfis esse publisher roda
+#   urls     : uma ou mais paginas. Paginas de ARTIGO rendem muito mais
+#              ad nativo que a home, porque o widget fica no fim do texto.
+#   note     : anotacao livre, so pra voce lembrar
+# ---------------------------------------------------------------------------
+
+- name: aol
+  devices: [desktop, mobile]
+  urls:
+    - https://www.aol.com/
+    - https://www.aol.com/news/
+  note: "AOL (todos) — stream ad nativo do Yahoo/AOL"
+
+- name: yahoo
+  devices: [desktop, mobile]
+  urls:
+    - https://www.yahoo.com/news/
+    - https://finance.yahoo.com/
+  note: "Yahoo (todos) — stream ad nativo. NAO use www.yahoo.com nem br.yahoo.com: de IP brasileiro os dois caem em br.search.yahoo.com, que e busca e nao tem feed."
+
+- name: msn
+  devices: [desktop]
+  urls:
+    - https://www.msn.com/en-us/news
+    - https://www.msn.com/en-us/money
+  note: "MSN — Microsoft Audience Network"
+
+- name: wave-browser
+  devices: [desktop]
+  urls:
+    - https://wavebrowser.co/
+  note: "Wave Browser — o feed fica dentro do proprio browser; a home publica rende pouco"
+
+- name: cbs
+  devices: [mobile]
+  urls:
+    - https://www.cbsnews.com/
+  note: "CBS — Taboola/Outbrain no rodape das materias"
+
+- name: abc
+  devices: [mobile]
+  urls:
+    - https://abcnews.go.com/
+  note: "ABC News"
+
+- name: nbc
+  devices: [mobile]
+  urls:
+    - https://www.nbcnews.com/
+  note: "NBC News"
+
+- name: business-insider
+  devices: [mobile]
+  urls:
+    - https://www.businessinsider.com/
+  note: "Business Insider — Taboola pesado"
+
+- name: times
+  devices: [mobile]
+  urls:
+    - https://timesofindia.indiatimes.com/
+  note: "Times Internet Limited. Se o seu 'Times Limited' for outro, troque a URL aqui."

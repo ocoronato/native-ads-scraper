@@ -1,0 +1,32 @@
+# ---------------------------------------------------------------------------
+# Credenciais. NUNCA versionar.
+# ---------------------------------------------------------------------------
+r2.config.json
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---------------------------------------------------------------------------
+# Dados coletados. Sao a base do usuario, nao do projeto: pesam centenas de MB
+# e nao fazem sentido no historico de um repositorio de codigo.
+# ---------------------------------------------------------------------------
+data/
+site/
+
+# ---------------------------------------------------------------------------
+# Ambiente e lixo de build.
+# ---------------------------------------------------------------------------
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Editor / sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

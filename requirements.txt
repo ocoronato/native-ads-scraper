@@ -1,0 +1,9 @@
+# Navegador real: os widgets de ad nativo so montam com JS rodando.
+playwright>=1.49
+
+# Leitura do publishers.yaml.
+PyYAML>=6.0
+
+# Upload das imagens em resolucao cheia pro Cloudflare R2 (S3-compativel).
+# Opcional: sem boto3 a coleta funciona e o site cai pras URLs do CDN.
+boto3>=1.34
