@@ -62,9 +62,16 @@ NICHOS: list[tuple[str, str, str, str]] = [
      r"(prostate|testo|mensreport|themens)"),
 
     ("articulacoes-dor", "Dores e articulações",
-     r"\b(joints?|knees?|back pain|arthrit(is|ic)|nerve pain|sciatica|"
-     r"poor balance|mobility|inflammation|swollen|leg strength|chronic pain)\b",
-     r"(joint|knee|pain|nerve|arthrit|mobility)"),
+     # Ombro e coluna sao metade do nicho na pratica: "spinal stenosis" e
+     # "rotator cuff" sozinhos respondem por dezenas de criativos que antes
+     # caiam em "outros" por nao terem nenhuma palavra da lista original.
+     r"\b(joints?|knees?|shoulders?|back pain|hip pain|hip replacement|"
+     r"arthrit(is|ic)|rotator cuff|stenosis|spine|spinal|herniated|discs?|"
+     r"cartilage|tendons?|ligaments?|bursitis|plantar fasciitis|"
+     r"nerve pain|sciatica|poor balance|mobility|inflammation|swollen|"
+     r"leg strength|chronic pain)\b",
+     r"(joint|knee|pain|nerve|arthrit|mobility|ortho|spine|spinal|"
+     r"shoulder|rejuvacare)"),
 
     ("dental", "Dental",
      r"\b(teeth|tooth|dental|dentists?|gums?|dentures?|implants?|smile)\b",
@@ -142,10 +149,18 @@ NICHOS: list[tuple[str, str, str, str]] = [
      r"(autotrader|cars?\.|vehicle|truck|motors)"),
 
     ("viagem", "Viagem",
+     # "fly" leva lookbehind porque a forma mais comum dele nessas headlines
+     # nao e aviacao, e a expressao "would never fly today" das listas de
+     # nostalgia. Sem a guarda, cada listicle do tipo cairia em viagem.
+     #
+     # "airport" e "layover" ficaram DE FORA de proposito: na base inteira
+     # eles so aparecem numa noticia de estudante preso em Dubai — zero
+     # anuncio de viagem e cinco falsos positivos roubados de conteudo.
      r"\b(cruises?|flights?|airfare|private jets?|vacations?|resorts?|"
      r"all-?inclusive|hotels?|beachfront|airlines?|travel(ing)?|getaways?|"
-     r"business class|destinations?|room rates?|suites?|stay at|tourism)\b",
-     r"(travel|cruise|flight|trip|vacation|hotel)"),
+     r"business class|destinations?|room rates?|suites?|stay at|tourism)\b"
+     r"|(?<!never )(?<!would )\bfly\b",
+     r"(travel|cruise|flight|trip|vacation|hotel|airlin|airfare|compagnie)"),
 
     ("pets", "Pets",
      r"\b(dogs?|cats?|pupp(y|ies)|kittens?|pet (food|owners?|parents?)|"
