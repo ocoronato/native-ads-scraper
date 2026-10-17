@@ -9,6 +9,7 @@ o ad nativo direto no HTML do stream.
 
 from __future__ import annotations
 
+import html
 import json
 from typing import Any, Iterator
 
@@ -48,7 +49,11 @@ AD_CLICK_HOSTS = (
 _TITLE_KEYS = ("name", "content", "title", "headline", "shorttitle", "text")
 _IMAGE_KEYS = ("thumbnail", "image", "thumbnailurl", "imageurl", "img", "picture")
 _URL_KEYS = ("url", "clickurl", "click_url", "destinationurl", "targeturl", "link")
-_BRAND_KEYS = ("branding", "source_name", "sourcename", "advertiser", "brand", "publisher")
+# "branding-text" e o do Taboola. Vem antes de "publisher" porque no Taboola
+# "publisher" e o nome da CONTA do anunciante (ex.: taboolaaccount-guygovplus),
+# nao a marca que aparece no card.
+_BRAND_KEYS = ("branding", "branding-text", "source_name", "sourcename",
+               "advertiser", "brand", "publisher")
 _PAID_HINT_KEYS = ("disclosure", "is_paid", "ispaid", "sponsored")
 
 
@@ -95,23 +100,43 @@ def _walk(node: Any, depth: int = 0) -> Iterator[dict]:
             yield from _walk(value, depth + 1)
 
 
+def _decode_payload(body: str) -> Any | None:
+    """Le JSON puro e as duas formas de JSON embrulhado em JavaScript.
+
+    - JSONP de callback: `callback({...})`
+    - atribuicao a variavel, que e como o Taboola faz: `trc_json_response = {...}`
+
+    Tenta do mais estrito ao mais solto. O ultimo recurso — do primeiro `{`
+    ao ultimo `}` — e o que pega a atribuicao; ele vem por ultimo porque, num
+    JSONP, cortaria no meio se houvesse parentese dentro de uma string.
+    """
+    body = body.strip()
+    if not body:
+        return None
+    candidatos = [body]
+    if not body.startswith(("{", "[")):
+        start, end = body.find("("), body.rfind(")")
+        if start != -1 and end > start:
+            candidatos.append(body[start + 1 : end])
+        start, end = body.find("{"), body.rfind("}")
+        if start != -1 and end > start:
+            candidatos.append(body[start : end + 1])
+    for texto in candidatos:
+        try:
+            return json.loads(texto)
+        except (json.JSONDecodeError, ValueError):
+            continue
+    return None
+
+
 def parse_ad_payload(body: str, sponsored_only: bool = True) -> list[dict]:
     """Extrai itens de anuncio de uma resposta de API de widget.
 
     Nao amarra em schema: varre o JSON e aceita todo no que tenha titulo,
     imagem e link ao mesmo tempo. Sobrevive a mudanca de formato.
     """
-    body = body.strip()
-    # Algumas respostas vem em JSONP: callback({...}).
-    if body and not body.startswith(("{", "[")):
-        start, end = body.find("("), body.rfind(")")
-        if start == -1 or end <= start:
-            return []
-        body = body[start + 1 : end]
-
-    try:
-        payload = json.loads(body)
-    except (json.JSONDecodeError, ValueError):
+    payload = _decode_payload(body)
+    if payload is None:
         return []
 
     items: list[dict] = []
@@ -122,6 +147,9 @@ def parse_ad_payload(body: str, sponsored_only: bool = True) -> list[dict]:
         title = _first(node, _TITLE_KEYS)
         if not isinstance(title, str) or len(title.strip()) < 12:
             continue
+        # A API manda "It&#39;s"; o DOM ja mostra "It's". Sem desfazer a
+        # entidade, o mesmo criativo vira dois fingerprints diferentes.
+        title = html.unescape(title).strip()
         image = _as_image_url(_first(node, _IMAGE_KEYS))
         if not image:
             continue
@@ -134,6 +162,11 @@ def parse_ad_payload(body: str, sponsored_only: bool = True) -> list[dict]:
             origin == "sponsored"
             or any(node.get(k) for k in _PAID_HINT_KEYS)
             or any(host in url.lower() for host in AD_CLICK_HOSTS)
+            # Taboola marca patrocinado assim, com origin="default": tblci e o
+            # id de clique pago, e is-syndicated separa anunciante de materia
+            # do proprio portal.
+            or bool(node.get("tblci"))
+            or str(node.get("is-syndicated", "")).lower() == "true"
         )
         if sponsored_only and not paid:
             continue
@@ -313,6 +346,11 @@ DOM_EXTRACTOR_JS = r"""
   const push = (root, link, network, paid) => {
     const href = abs(link.getAttribute('href') || '');
     if (!href.startsWith('http')) return;
+    // Botao de AdChoices / "About Taboola" mora dentro do card do anuncio.
+    // Pegar ele como link do anuncio troca a landing pela pagina de
+    // informacao do Taboola, com a UTM do PORTAL — que parece rastreio do
+    // anunciante e nao e.
+    if (/popup\.taboola\.com/.test(href)) return;
     const headline = headlineOf(root, link);
     const image = imageOf(root);
     if (!headline || !image) return;

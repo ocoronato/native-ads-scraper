@@ -142,9 +142,13 @@ class Creative:
         um nome diferente, e o que hoje parece lixo amanha explica um teste.
         """
         try:
-            pairs = parse_qsl(urlparse(self.click_url).query, keep_blank_values=True)
+            query = urlparse(self.click_url).query
         except ValueError:
             return {}
+        # Anunciante do Taboola as vezes cola o template de rastreio com um
+        # segundo "?" (".../tb?tblcid=X?utm_source=taboola&..."). Lido ao pe da
+        # letra, o utm_source inteiro some dentro do valor do tblcid.
+        pairs = parse_qsl(query.replace("?", "&"), keep_blank_values=True)
         params: dict[str, str] = {}
         for key, value in pairs:
             params.setdefault(key, value)  # repetido: o primeiro vale

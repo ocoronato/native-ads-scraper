@@ -158,7 +158,12 @@ def harvest_url(
             content_type = response.headers.get("content-type", "")
         except PlaywrightError:
             return
-        if "json" in content_type.lower():
+        # O Taboola entrega a lista de anuncios como JavaScript
+        # (trc_json_response = {...}), nao como JSON. Filtrar so "json" jogava
+        # fora justamente a resposta que traz as UTMs do anunciante — o link
+        # que fica no DOM e a landing limpa, sem nenhum parametro.
+        tipo = content_type.lower()
+        if "json" in tipo or "javascript" in tipo:
             captured.append(response)
 
     page.on("response", on_response)

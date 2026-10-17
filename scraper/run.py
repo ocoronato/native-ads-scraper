@@ -334,6 +334,7 @@ def run(args: argparse.Namespace) -> int:
     print(f"\n  criativos ineditos        : {store.added}")
     print(f"  reencontrados (streak +1) : {store.returning}")
     print(f"  repetidos na mesma coleta : {store.repeated_today}")
+    print(f"  links que ganharam UTM    : {store.links_melhorados}")
     print(f"  base total         : {started_with} -> {len(store.rows)}")
     print(f"\n  CSV     {store.csv_path}")
     print(f"  JSON    {store.json_path}")

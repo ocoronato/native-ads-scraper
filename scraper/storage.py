@@ -40,6 +40,7 @@ class CreativeStore:
         self.added = 0
         self.repeated_today = 0  # mesmo criativo, mesma coleta: nao diz nada
         self.returning = 0  # visto de novo num outro dia: streak cresceu
+        self.links_melhorados = 0  # ganharam as UTMs que antes faltavam
 
     def _load(self) -> list[dict]:
         if not self.json_path.exists():
@@ -76,6 +77,7 @@ class CreativeStore:
                 self.repeated_today += 1
             else:
                 self.returning += 1
+            self._melhorar_link(existing, creative)
             return False
 
         row = creative.to_row()
@@ -85,6 +87,33 @@ class CreativeStore:
         self.index[creative.fingerprint] = row
         self.added += 1
         return True
+
+    # Campos que saem do link de clique e por isso mudam juntos com ele.
+    _CAMPOS_DO_LINK = ("click_url", "landing_domain", "utm_source", "utm_medium",
+                       "utm_content", "campaign_id", "click_params")
+
+    @staticmethod
+    def _tem_rastreio(row: dict) -> bool:
+        """Link com UTM de verdade, nao a do botao de AdChoices do Taboola."""
+        url = row.get("click_url") or ""
+        return bool(row.get("utm_source")) and "popup.taboola.com" not in url
+
+    def _melhorar_link(self, existing: dict, creative: Creative) -> None:
+        """Troca o link da linha pelo do avistamento novo, se ele for melhor.
+
+        O mesmo criativo do Taboola chega por dois caminhos na mesma pagina:
+        pelo DOM, com a landing limpa, e pela API, com as UTMs do anunciante.
+        Qual chega primeiro e acaso — entao a regra e simples: link com
+        rastreio substitui link sem rastreio, nunca o contrario.
+        """
+        if self._tem_rastreio(existing):
+            return
+        novo = creative.to_row()
+        if not self._tem_rastreio(novo):
+            return
+        for campo in self._CAMPOS_DO_LINK:
+            existing[campo] = novo[campo]
+        self.links_melhorados += 1
 
     def _fetch(self, api_request, url: str) -> tuple[bytes, str] | None:
         """Baixa uma URL pelo contexto do browser (leva cookie e referer certos)."""
